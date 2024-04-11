@@ -73,10 +73,6 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
             f.write(f'bmax: {bmax}\n')
 
 
-
-
-
-
 def data_loader(data_dir):
     data = []
     for sample_dir in os.listdir(data_dir):
@@ -85,8 +81,3 @@ def data_loader(data_dir):
 
         data.append((qspace, rspace))
     return data
-
-
-x = data_loader('data')
-print(x[0][0].shape)
-
