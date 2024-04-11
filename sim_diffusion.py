@@ -11,7 +11,7 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
     rFOV = 1 / qDelta
     rmax = rFOV / 2
 
-    # Grids for R-space and Q-space:
+    # Create grid for R-space
     grid = np.linspace(-rmax, rmax, simsize)
     X, Y, Z = np.meshgrid(grid, grid, grid, indexing='ij')
 
@@ -20,15 +20,14 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
 
     # Diffusion simulation
     rspace_total = np.zeros_like(X)
-    for fraction, angle_degrees in zip(fiber_fractions, angles):
+    for fraction, angle_degrees, Dxx in zip(fiber_fractions, angles, Dxx_base):
         angle = np.radians(angle_degrees)
         # Calculate rotation
         cos_angle, sin_angle = np.cos(angle), np.sin(angle)
         Xr = X * cos_angle + Y * sin_angle
         Yr = Y * cos_angle - X * sin_angle
 
-        # Diffusion coefficients
-        Dxx = Dxx_base
+        # Diffusion coefficients, updated to vary per fiber
         Dyy = Dxx * (1 - FA) / np.sqrt(2)
         Dzz = Dxx * (1 - FA) / np.sqrt(2)
 
@@ -49,9 +48,10 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
         FA = np.random.uniform(0.01, 0.99)
         fiber_fractions = np.random.dirichlet(np.ones(3))  # For three fibers
         angles = np.random.uniform(0, 180, size=3)  # Angles between 0 and 180 degrees
+        Dxx_individual = np.random.uniform(Dxx_base * 0.8, Dxx_base * 1.2, size=3)  # Vary Dxx slightly for each fiber
 
         # Simulate diffusion and compute spaces
-        rspace, qspace = simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_base,
+        rspace, qspace = simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_individual,
                                             fiber_fractions, angles)
 
         # Save data in individual folders
@@ -65,7 +65,7 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
             f.write(f'FA: {FA}\n')
             f.write(f'Fiber fractions: {fiber_fractions}\n')
             f.write(f'Angles: {angles}\n')
-            f.write(f'Dxx_base: {Dxx_base}\n')
+            f.write(f'Dxx_individual: {Dxx_individual}\n')
             f.write(f'bigDelta: {bigDelta}\n')
             f.write(f'smallDelta: {smallDelta}\n')
             f.write(f'gmax: {gmax}\n')
