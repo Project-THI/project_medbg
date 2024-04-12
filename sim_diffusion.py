@@ -5,7 +5,7 @@ import scipy.io
 import os
 
 
-def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_base, fiber_fractions, angles):
+def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_base, fiber_fractions, angle_xy, angle_yz):
     qmax = gamma / (2 * np.pi) * smallDelta * gmax
     qDelta = qmax * 2 / (simsize - 1)
     rFOV = 1 / qDelta
@@ -20,12 +20,18 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
 
     # Diffusion simulation
     rspace_total = np.zeros_like(X)
-    for fraction, angle_degrees, Dxx in zip(fiber_fractions, angles, Dxx_base):
-        angle = np.radians(angle_degrees)
-        # Calculate rotation
+    for fraction, angle_xy, angle_yz, Dxx in zip(fiber_fractions, angle_xy, angle_yz, Dxx_base):
+        # Calculate fiber rotation around x-y plane:
+        angle = np.radians(angle_xy)
         cos_angle, sin_angle = np.cos(angle), np.sin(angle)
         Xr = X * cos_angle + Y * sin_angle
         Yr = Y * cos_angle - X * sin_angle
+
+        # Calculate fiber rotation around y-z plane:
+        angle = np.radians(angle_yz)
+        cos_angle, sin_angle = np.cos(angle), np.sin(angle)
+        Yr = Yr * cos_angle + Z * sin_angle
+        Zr = Z * cos_angle - Yr * sin_angle
 
         # Diffusion coefficients, updated to vary per fiber
         Dyy = Dxx * (1 - FA) / np.sqrt(2)
@@ -46,13 +52,15 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
     for i in tqdm(range(n_samples)):
         # Generate random or predetermined parameters for each sample
         FA = np.random.uniform(0.01, 0.99)
-        fiber_fractions = np.random.dirichlet(np.ones(3))  # For three fibers
-        angles = np.random.uniform(0, 180, size=3)  # Angles between 0 and 180 degrees
-        Dxx_individual = np.random.uniform(Dxx_base * 0.8, Dxx_base * 1.2, size=3)  # Vary Dxx slightly for each fiber
+        num_fibers = np.random.randint(1, 3)
+        fiber_fractions = np.random.dirichlet(np.ones(num_fibers))  # For three fibers
+        angle_xy = np.random.uniform(0, 180, size=num_fibers)  # Angles between 0 and 180 degrees
+        angle_yz = np.random.uniform(0, 180, size=num_fibers)  # Angles between 0 and 180 degrees
+        Dxx_individual = np.random.uniform(Dxx_base * 0.8, Dxx_base * 1.2, size=num_fibers)  # Vary Dxx slightly for each fiber
 
         # Simulate diffusion and compute spaces
         rspace, qspace = simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_individual,
-                                            fiber_fractions, angles)
+                                            fiber_fractions, angle_xy, angle_yz)
 
         # Save data in individual folders
         sample_dir = f'{data_dir}/sample_{i + 1}'
@@ -64,7 +72,8 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
             f.write(f'simsize: {simsize}\n')
             f.write(f'FA: {FA}\n')
             f.write(f'Fiber fractions: {fiber_fractions}\n')
-            f.write(f'Angles: {angles}\n')
+            f.write(f'Angle_xy: {angle_xy}\n')
+            f.write(f'Angle_yz: {angle_yz}\n')
             f.write(f'Dxx_individual: {Dxx_individual}\n')
             f.write(f'bigDelta: {bigDelta}\n')
             f.write(f'smallDelta: {smallDelta}\n')
