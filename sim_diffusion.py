@@ -54,8 +54,8 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
         FA = np.random.uniform(0.01, 0.99)
         num_fibers = np.random.randint(1, 3)
         fiber_fractions = np.random.dirichlet(np.ones(num_fibers))  # For three fibers
-        angle_xy = np.random.uniform(0, 180, size=num_fibers)  # Angles between 0 and 180 degrees
-        angle_yz = np.random.uniform(0, 180, size=num_fibers)  # Angles between 0 and 180 degrees
+        angle_xy = np.random.uniform(0, 179, size=num_fibers)  # Angles between 0 and 180 degrees
+        angle_yz = np.random.uniform(0, 179, size=num_fibers)  # Angles between 0 and 180 degrees
         Dxx_individual = np.random.uniform(Dxx_base * 0.8, Dxx_base * 1.2, size=num_fibers)  # Vary Dxx slightly for each fiber
 
         # Simulate diffusion and compute spaces
