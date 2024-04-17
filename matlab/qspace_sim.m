@@ -7,7 +7,7 @@
 %
 % see e.g. Lin et al., ChemPhysLett 335 (2001) 249-256. 
 %
-% TODO: 
+% TODO:
 % - scaling of X,Y,Z axis after ifft -> qspace range missing
 % - alternative sampling schemes (non-cartesian)
 % - add noise

@@ -45,6 +45,9 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
     # Fourier transform to Q-space (Signal)
     qspace = fftshift(fftn(ifftshift(rspace_total)))
 
+    # Work with the magnitude of the qspace, disregard the phase information
+    qspace = np.abs(qspace)
+
     return rspace_total, qspace
 
 
@@ -61,6 +64,9 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
         # Simulate diffusion and compute spaces
         rspace, qspace = simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_individual,
                                             fiber_fractions, angle_xy, angle_yz)
+
+        print(rspace.shape)
+        print(qspace.shape)
 
         # Save data in individual folders
         sample_dir = f'{data_dir}/sample_{i + 1}'

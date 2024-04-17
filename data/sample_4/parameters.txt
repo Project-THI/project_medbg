@@ -1,9 +1,9 @@
 simsize: 33
-FA: 0.11157044612577724
-Fiber fractions: [0.36708454 0.63291546]
-Angle_xy: [124.7849127   78.20910651]
-Angle_yz: [143.84012811  56.38515938]
-Dxx_individual: [1.97065474e-09 1.65552264e-09]
+FA: 0.3426162053887847
+Fiber fractions: [1.]
+Angle_xy: [62.49519211]
+Angle_yz: [31.95042528]
+Dxx_individual: [1.76377663e-09]
 bigDelta: 0.066
 smallDelta: 0.06
 gmax: 0.04
