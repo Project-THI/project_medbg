@@ -26,12 +26,12 @@ rFOV = 1/qDelta;
 rmax = rFOV/2;
 
 % Simulation variations
-num_simulations = 10000;
+num_simulations = 10;
 
 D_range = [1E-11, 1E-9];
 FA_range = [0.01, 0.99];
-alpha_range = [0, 360]; % degrees
-beta_range = [0, 360]; % degrees
+alpha_range = [0, 359]; % degrees
+beta_range = [0, 359]; % degrees
 
 % ---------------------------------------------
 % 2. Generate and process data for multiple simulations
@@ -40,7 +40,7 @@ results = cell(num_simulations, 1);
 
 for i = 1:num_simulations
     % Randomly choose number of fibers inside the voxel
-    num_fibers = randi([1, 3]);
+    num_fibers = randi([3, 3]);
 
     % Init random rspace
     rspace = zeros(simsize, simsize, simsize);
@@ -74,11 +74,7 @@ for i = 1:num_simulations
     
     % q-space calculation
     qspace = fftshift(fftn(ifftshift(rspace)));
-    
-    % Adding Gaussian noise to q-space
-    noise_level = 0.01; % adjust noise level accordingly
-    qspace = qspace + noise_level * randn(size(qspace));
-    
+        
     % Store results
     results{i} = struct('rspace', rspace, 'qspace', qspace, 'num_fibers', num_fibers, 'fiber_fractions', fiber_fractions);
 end
