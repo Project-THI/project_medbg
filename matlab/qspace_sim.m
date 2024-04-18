@@ -92,13 +92,12 @@ rspace3 = 1/sqrt(((4*pi*bigDelta)^3)*Dxx3*Dyy3*Dzz3)*exp(-(X2.*X2/(4*Dxx3*bigDel
 %example combination of two fibers with respective fractions
 %-> rspace: this is the output result (perfect ground truth)
 rspace = f1*rspace1 + f2*rspace2; 
-save('rspace.mat','rspace');
+save('rspace_test.mat','rspace');
 
  %calculate q-space by fast fourier transform -> this is the input data (this is perfect input without any noise/artefacts)
 qspace = fftshift(fftn(ifftshift(rspace)));
-save('qspace.mat','qspace');
+save('qspace_test.mat','qspace');
 
 % qspace1 = fftshift(fftn(ifftshift(rspace1)));
 % qspace2 = fftshift(fftn(ifftshift(rspace2)));
 % qspace3 = fftshift(fftn(ifftshift(rspace3)));
-

@@ -5,9 +5,11 @@ from scipy.fft import fftn, fftshift, ifftshift
 from tqdm import tqdm
 import scipy.io
 import os
+import mat73
 
 
-def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_base, fiber_fractions, angle_xy, angle_xz):
+def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_base, fiber_fractions, angle_xy,
+                       angle_xz):
     qmax = gamma / (2 * np.pi) * smallDelta * gmax
     qDelta = qmax * 2 / (simsize - 1)
     rFOV = 1 / qDelta
@@ -74,47 +76,6 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
     return rspace_total, qspace, rspaces
 
 
-def gen_data(data_dir):
-    FA_range = np.arange(0.01, 0.99, 0.05)
-    num_fibers_range = np.arange(1, 3, 1)
-    angle_xy_range = np.arange(0, 179, 5)
-    angle_xz_range = np.arange(0, 179, 5)
-
-    simsize = 33
-    bmax = 10000  # s/mm^2
-    bigDelta = 66e-3  # sec
-    smallDelta = 60e-3  # sec
-    gmax = 40e-3  # T/m
-    gamma = 2 * np.pi * 42.57e6  # Hz/T for proton
-    Dxx = 3e-10  # m^2/s
-
-    for fa in FA_range:
-        for num_fibers in num_fibers_range:
-            lsts = []
-            for _ in range(len(num_fibers)):
-                lsts.append(angle_xy_range)
-            lsts = itertools.product(*lsts)
-            perms = list(itertools.permutations(lsts, num_fibers))
-
-
-            for angle_xy in angle_xy_range:
-                for angle_xz in angle_xz_range:
-                    qspace, rspace, _ = simulate_diffusion(simsize=simsize,
-                                                        bmax=bmax,
-                                                        bigDelta=bigDelta,
-                                                        smallDelta=smallDelta,
-                                                        gmax=gmax,
-                                                        gamma=gamma,
-                                                        FA=fa,
-                                                        Dxx_base=Dxx,
-                                                        fiber_fractions= np.random.dirichlet(np.ones(num_fibers)),
-                                                        angle_xy=, angle_xz)
-
-    generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, gmax, gamma, Dxx_base)
-    data = data_loader(data_dir)
-    return data
-
-
 def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, gmax, gamma, Dxx_base):
     for i in tqdm(range(n_samples)):
         # Generate random or predetermined parameters for each sample
@@ -123,11 +84,12 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
         fiber_fractions = np.random.dirichlet(np.ones(num_fibers))  # For three fibers
         angle_xy = np.random.uniform(0, 179, size=num_fibers)  # Angles between 0 and 180 degrees
         angle_yz = np.random.uniform(0, 179, size=num_fibers)  # Angles between 0 and 180 degrees
-        Dxx_individual = np.random.uniform(Dxx_base * 0.8, Dxx_base * 1.2, size=num_fibers)  # Vary Dxx slightly for each fiber
+        Dxx_individual = np.random.uniform(Dxx_base * 0.8, Dxx_base * 1.2,
+                                           size=num_fibers)  # Vary Dxx slightly for each fiber
 
         # Simulate diffusion and compute spaces
         rspace, qspace, _ = simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_individual,
-                                            fiber_fractions, angle_xy, angle_yz)
+                                               fiber_fractions, angle_xy, angle_yz)
 
         print(rspace.shape)
         print(qspace.shape)
@@ -152,11 +114,16 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
             f.write(f'bmax: {bmax}\n')
 
 
-def data_loader(data_dir):
-    data = []
-    for sample_dir in os.listdir(data_dir):
-        rspace = scipy.io.loadmat(os.path.join(data_dir, sample_dir, 'rspace.mat'))['rspace']
-        qspace = scipy.io.loadmat(os.path.join(data_dir, sample_dir, 'qspace.mat'))['qspace']
+def prep_mat_sim(data_dir):
+    sims = mat73.loadmat(data_dir)['results']
+    loader = []
 
-        data.append((qspace, rspace))
-    return data
+    for sim in tqdm(range(len(sims)), desc='Loading q- and r-space data'):
+        rspace, qspace = sims[sim][0]['rspace'], sims[sim][0]['qspace']
+        info = {'fiber_fractions': sims[sim][0]['fiber_fractions'],
+                'num_fibers': sims[sim][0]['num_fibers'],
+                }
+        # TODO Might want to add more info here if it doesn't get too big
+        loader.append((qspace, rspace, info))
+
+    return loader
