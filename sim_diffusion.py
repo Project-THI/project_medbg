@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 from scipy.fft import fftn, fftshift, ifftshift
 from tqdm import tqdm
@@ -5,7 +7,7 @@ import scipy.io
 import os
 
 
-def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_base, fiber_fractions, angle_xy, angle_yz):
+def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_base, fiber_fractions, angle_xy, angle_xz):
     qmax = gamma / (2 * np.pi) * smallDelta * gmax
     qDelta = qmax * 2 / (simsize - 1)
     rFOV = 1 / qDelta
@@ -18,20 +20,39 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
     # Coefficients for R-space normalization
     pi_coeff = (4 * np.pi * bigDelta) ** 3
 
+    rspaces = []
+
     # Diffusion simulation
     rspace_total = np.zeros_like(X)
-    for fraction, angle_xy, angle_yz, Dxx in zip(fiber_fractions, angle_xy, angle_yz, Dxx_base):
+
+    for i in range(len(fiber_fractions)):
+        # print(len(fiber_fractions))
+        fr = fiber_fractions[i]
+        a_xy = angle_xy[i]
+        a_xz = angle_xz[i]
+        Dxx = Dxx_base
+
+        # print(f'Fraction: {fr}, Angle XY: {a_xy}, Angle YZ: {a_yz}, Dxx: {Dxx}')
+
+        # Calculate fiber rotation around y-z plane:
+        # angle = np.radians(a_yz)
+        # cos_angle, sin_angle = np.cos(angle), np.sin(angle)
+        # Yr = Y * cos_angle + Z * sin_angle
+        # Zr = Z * cos_angle - Y * sin_angle
+
         # Calculate fiber rotation around x-y plane:
-        angle = np.radians(angle_xy)
+        angle = np.radians(a_xy)
         cos_angle, sin_angle = np.cos(angle), np.sin(angle)
         Xr = X * cos_angle + Y * sin_angle
         Yr = Y * cos_angle - X * sin_angle
 
-        # Calculate fiber rotation around y-z plane:
-        angle = np.radians(angle_yz)
+        # Calculate fiber rotation around x-z plane:
+        angle = np.radians(a_xz)
         cos_angle, sin_angle = np.cos(angle), np.sin(angle)
-        Yr = Yr * cos_angle + Z * sin_angle
-        Zr = Z * cos_angle - Yr * sin_angle
+        Xr = Xr * cos_angle + Z * sin_angle
+        Zr = Z * cos_angle - Xr * sin_angle
+
+        print(f'Fraction: {fr}, Number: {i}, Angle XY: {a_xy}, Angle XZ: {a_xz}, Dxx: {Dxx}')
 
         # Diffusion coefficients, updated to vary per fiber
         Dyy = Dxx * (1 - FA) / np.sqrt(2)
@@ -39,8 +60,10 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
 
         # R-space distribution for the current fiber
         rspace = 1 / np.sqrt(pi_coeff * Dxx * Dyy * Dzz) * np.exp(
-            -(Xr ** 2 / (4 * Dxx * bigDelta) + Yr ** 2 / (4 * Dyy * bigDelta) + Z ** 2 / (4 * Dzz * bigDelta)))
-        rspace_total += fraction * rspace
+            -(Xr ** 2 / (4 * Dxx * bigDelta) + Yr ** 2 / (4 * Dyy * bigDelta) + Zr ** 2 / (4 * Dzz * bigDelta)))
+
+        rspace_total += fr * rspace
+        rspaces.append(fr * rspace)
 
     # Fourier transform to Q-space (Signal)
     qspace = fftshift(fftn(ifftshift(rspace_total)))
@@ -48,7 +71,48 @@ def simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx
     # Work with the magnitude of the qspace, disregard the phase information
     qspace = np.abs(qspace)
 
-    return rspace_total, qspace
+    return rspace_total, qspace, rspaces
+
+
+def gen_data(data_dir):
+    FA_range = np.arange(0.01, 0.99, 0.05)
+    num_fibers_range = np.arange(1, 3, 1)
+    angle_xy_range = np.arange(0, 179, 5)
+    angle_xz_range = np.arange(0, 179, 5)
+
+    simsize = 33
+    bmax = 10000  # s/mm^2
+    bigDelta = 66e-3  # sec
+    smallDelta = 60e-3  # sec
+    gmax = 40e-3  # T/m
+    gamma = 2 * np.pi * 42.57e6  # Hz/T for proton
+    Dxx = 3e-10  # m^2/s
+
+    for fa in FA_range:
+        for num_fibers in num_fibers_range:
+            lsts = []
+            for _ in range(len(num_fibers)):
+                lsts.append(angle_xy_range)
+            lsts = itertools.product(*lsts)
+            perms = list(itertools.permutations(lsts, num_fibers))
+
+
+            for angle_xy in angle_xy_range:
+                for angle_xz in angle_xz_range:
+                    qspace, rspace, _ = simulate_diffusion(simsize=simsize,
+                                                        bmax=bmax,
+                                                        bigDelta=bigDelta,
+                                                        smallDelta=smallDelta,
+                                                        gmax=gmax,
+                                                        gamma=gamma,
+                                                        FA=fa,
+                                                        Dxx_base=Dxx,
+                                                        fiber_fractions= np.random.dirichlet(np.ones(num_fibers)),
+                                                        angle_xy=, angle_xz)
+
+    generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, gmax, gamma, Dxx_base)
+    data = data_loader(data_dir)
+    return data
 
 
 def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, gmax, gamma, Dxx_base):
@@ -62,7 +126,7 @@ def generate_samples(data_dir, n_samples, simsize, bmax, bigDelta, smallDelta, g
         Dxx_individual = np.random.uniform(Dxx_base * 0.8, Dxx_base * 1.2, size=num_fibers)  # Vary Dxx slightly for each fiber
 
         # Simulate diffusion and compute spaces
-        rspace, qspace = simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_individual,
+        rspace, qspace, _ = simulate_diffusion(simsize, bmax, bigDelta, smallDelta, gmax, gamma, FA, Dxx_individual,
                                             fiber_fractions, angle_xy, angle_yz)
 
         print(rspace.shape)
